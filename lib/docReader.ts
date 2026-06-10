@@ -41,10 +41,11 @@ export async function getDocText(): Promise<string> {
 
   let credentials: Record<string, unknown>;
   try {
-    credentials = JSON.parse(saKeyRaw) as Record<string, unknown>;
+    const decoded = Buffer.from(saKeyRaw, "base64").toString("utf8");
+    credentials = JSON.parse(decoded) as Record<string, unknown>;
   } catch (err) {
     throw new Error(
-      `[docReader] failed to parse GOOGLE_SA_KEY as JSON: ${(err as Error).message}`
+      `[docReader] failed to parse GOOGLE_SA_KEY: ${(err as Error).message}`
     );
   }
 

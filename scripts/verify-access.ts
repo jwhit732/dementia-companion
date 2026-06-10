@@ -9,7 +9,7 @@ const saKeyRaw =
     const keyPath = path.resolve(process.cwd(), "companion-sa-key.json");
     if (fs.existsSync(keyPath)) {
       console.log(`[verify] loading key from ${keyPath}`);
-      return fs.readFileSync(keyPath, "utf8");
+      return Buffer.from(fs.readFileSync(keyPath, "utf8")).toString("base64");
     }
     return undefined;
   })();
@@ -31,7 +31,8 @@ if (!docId) {
   process.exit(1);
 }
 
-const credentials = JSON.parse(saKeyRaw) as Record<string, unknown>;
+const decoded = Buffer.from(saKeyRaw, "base64").toString("utf8");
+const credentials = JSON.parse(decoded) as Record<string, unknown>;
 
 const auth = new google.auth.GoogleAuth({
   credentials,

@@ -22,7 +22,7 @@ const tools = [
       parameters: { type: "object", properties: {}, required: [] },
     },
     server: {
-      url: `${VERCEL_URL}/api/today`,
+      url: `${VERCEL_URL}/api/today?secret=${COMPANION_SECRET}`,
       headers: { "x-companion-secret": COMPANION_SECRET },
     },
   },
@@ -34,7 +34,7 @@ const tools = [
       parameters: { type: "object", properties: {}, required: [] },
     },
     server: {
-      url: `${VERCEL_URL}/api/reminders`,
+      url: `${VERCEL_URL}/api/reminders?secret=${COMPANION_SECRET}`,
       headers: { "x-companion-secret": COMPANION_SECRET },
     },
   },
@@ -46,7 +46,7 @@ const tools = [
       parameters: { type: "object", properties: {}, required: [] },
     },
     server: {
-      url: `${VERCEL_URL}/api/person`,
+      url: `${VERCEL_URL}/api/person?secret=${COMPANION_SECRET}`,
       headers: { "x-companion-secret": COMPANION_SECRET },
     },
   },
@@ -63,11 +63,8 @@ const assistantConfig = {
     temperature: 0.3,
   },
   voice: {
-    provider: "11labs",
-    voiceId: "XrExE9yKIg1WjnnlVkGX", // Matilda — warm, friendly female
-    stability: 0.5,
-    similarityBoost: 0.75,
-    speed: 0.85,
+    provider: "playht",
+    voiceId: "jennifer",
   },
   transcriber: {
     provider: "deepgram",

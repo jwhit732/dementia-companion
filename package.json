@@ -9,7 +9,8 @@
   "scripts": {
     "test": "jest",
     "template": "tsx scripts/generate-template.ts",
-    "fetch-test": "tsx scripts/test-fetch.ts"
+    "fetch-test": "tsx scripts/test-fetch.ts",
+    "verify": "tsx scripts/verify-access.ts"
   },
   "keywords": [],
   "author": "",

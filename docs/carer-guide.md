@@ -1,62 +1,130 @@
-# Carer Guide
+# Carer Guide — Margaret's Companion
 
-This guide explains how to write the daily document the Dementia Companion
-voice agent reads from. The document is a small piece of plain text
-describing who the person is, what their day looks like, the reminders
-that should be repeated, and the people they may ask about.
+This guide is for James. It explains how to keep the companion working correctly.
 
-The format below is intentionally simple so a carer can edit it from a
-phone or a printed sheet. The agent parses it into the schema defined in
-`lib/schema.ts`.
+---
 
-## Required fields
+## How it works
 
-| Field | Type | Purpose |
-| --- | --- | --- |
-| `name` | `string` | Full legal name of the person being cared for |
-| `preferredName` | `string` | Name they actually like being called |
-| `scheduleDate` | `string` | Date the schedule applies to, in "YYYY-MM-DD" format |
-| `schedule` | `ScheduleItem[]` | Time-ordered list of today's events |
-| `reminders` | `string[]` | Short standing reminders the agent may repeat |
-| `contacts` | `Contact[]` | People the person may ask about or want to call |
+Margaret calls **07 4803 5085** any time. A warm voice answers, knows her name, and reads from the document you maintain. You update a Google Doc from your phone; changes are live within 60 seconds.
 
-## Example document
+---
 
-Use this exact shape. The parser is permissive about whitespace and
-bullet style, but the section headers (`Name:`, `Preferred name:`,
-`Today (...):`, `Reminders:`, `Contacts:`) must appear as shown.
+## The daily document
+
+Open your Google Doc and update it each morning. The format must stay exactly as shown below.
 
 ```
-Name: Margaret
+Name: Margaret Thompson
 Preferred name: Marg
 
-Today (Tuesday 10 June 2025):
+Today (Tuesday 10 June 2026):
 - 10:00 AM — Dr Patel, skin check, Greenslopes Medical
 - 12:30 PM — Lunch with Sophie at home
 - 2:00 PM — Afternoon tablets (blue box, kitchen bench)
+- 4:00 PM — James visiting for afternoon tea
 
 Reminders:
 - Don't drive — licence surrendered March 2026
 - Sophie is David's daughter
+- Blue tablet box is on the kitchen bench
+- James calls every evening around 7pm
 
 Contacts:
 - James (son): 0400 000 000
+- Sophie (granddaughter): 0411 111 111
+- Dr Patel (GP): 07 3000 0000
 ```
 
-## Notes
+---
 
-- **Today (Day Date): header must match today's actual date — update it
-  each morning.** The day-of-week and date in parentheses are how the
-  agent knows the schedule block is current. If the header is stale the
-  agent will refuse to use the schedule.
-- Bullets can be `-`, `•`, or `*`. Use whichever is easiest to type;
-  the parser treats them identically.
-- Times in the `Today` block should be normalised to the `H:MM AM/PM`
-  form shown in the example (e.g. `10:00 AM`, `2:00 PM`). The em-dash
-  separating the time from the activity may also be a hyphen.
-- Locations on schedule items are optional. If present they follow the
-  activity, separated by a comma.
-- Contacts use the form `Name (relationship): phone`. The phone number
-  is optional and may be omitted along with the trailing colon.
-- All values in the example above are illustrative placeholders. Replace
-  them with the real person's details before the agent goes live.
+## The one thing you must do every morning
+
+**Update the date in the `Today (...)` header.**
+
+If the date doesn't match today, the companion will say *"I'll need James to update that for me"* for every schedule question — and you'll get an alert email.
+
+Change `Tuesday 10 June 2026` to today's day and date. Everything else can stay the same on quiet days.
+
+---
+
+## How to update from your phone
+
+1. Open the Google Doc in the Google Docs app
+2. Tap the pencil icon to edit
+3. Change the date on the `Today` line
+4. Add, remove, or edit schedule items as needed
+5. Tap the tick/save — changes are live within 60 seconds
+
+---
+
+## Schedule item format
+
+```
+- 10:00 AM — What she's doing, Location
+```
+
+- Time first, then a dash or em dash, then the activity
+- Location is optional — add it after a comma if useful
+- Times can be `10:00 AM`, `10am`, or `14:00` — all accepted
+- Bullets can be `-`, `•`, or `*`
+
+---
+
+## Reminders
+
+These are read to Margaret when she asks about her tablets or things she needs to remember. They don't change daily — update them when something changes permanently (e.g. a new medication, a change in routine).
+
+---
+
+## Contacts
+
+These are read when Margaret asks "who is James?" or "what's Sophie's number?" Format:
+
+```
+- Name (relationship): phone number
+```
+
+Phone is optional. Keep this list to the people she's most likely to ask about.
+
+---
+
+## Alert emails
+
+You'll receive an email if:
+
+- **Schedule not updated** — the `Today` header date doesn't match today. Update the date and save.
+- **Document parse error** — something in the document format is broken. Check it matches the example above exactly, then save.
+
+Alerts are sent at most once every 6 hours so you won't be flooded.
+
+---
+
+## What the companion will and won't do
+
+**Will do:**
+- Read today's schedule
+- Repeat information as many times as needed, warmly
+- Read reminders and contact details
+- Stay calm if Margaret is distressed and offer to have you call
+
+**Won't do:**
+- Invent appointments or medication advice
+- Answer questions not in the document (will say "I'll need James to update that")
+- Identify itself as a computer or AI
+- Make outbound calls or send messages
+
+---
+
+## If something goes wrong
+
+| Symptom | Likely cause | Fix |
+|---------|-------------|-----|
+| "I'll need James to update that" for everything | Date in `Today` header is wrong | Update the date and save |
+| Same as above after updating date | Document format broken | Check it matches the example exactly |
+| No answer when calling | Phone or service issue | Try again in a few minutes |
+| You received an alert email | See the email — it says the reason | Follow the fix above |
+
+---
+
+*The companion phone number is **07 4803 5085**.*

@@ -58,7 +58,7 @@ const patch = {
   },
 };
 
-console.log(`[vapi] Updating assistant ${ASSISTANT_ID} tools with query-param secret...`);
+console.log(`[vapi] Updating assistant ${ASSISTANT_ID} tools (Vapi response contract fix)...`);
 
 fetch(`https://api.vapi.ai/assistant/${ASSISTANT_ID}`, {
   method: "PATCH",

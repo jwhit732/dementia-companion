@@ -2,22 +2,17 @@ import type { IncomingMessage, ServerResponse } from "http";
 import { checkAuth } from "../lib/auth";
 import { getDocText } from "../lib/docReader";
 import { parseDoc } from "../lib/parser";
+import { readBody, vapiOk, vapiError, formatPerson } from "../lib/vapiAdapter";
 
 export default async function handler(
-  req: IncomingMessage,
+  req: IncomingMessage & { query?: Record<string, string | string[]> },
   res: ServerResponse
 ): Promise<void> {
-  res.setHeader("Content-Type", "application/json");
+  const body = await readBody(req);
+  const toolCallId = body.message?.toolCallList?.[0]?.id ?? "unknown";
 
-  if (req.method !== "GET") {
-    res.statusCode = 405;
-    res.end(JSON.stringify({ ok: false, reason: "method_not_allowed" }));
-    return;
-  }
-
-  if (!checkAuth({ headers: req.headers as Record<string, string | string[] | undefined> })) {
-    res.statusCode = 401;
-    res.end(JSON.stringify({ ok: false, reason: "unauthorized" }));
+  if (!checkAuth({ headers: req.headers as Record<string, string | string[] | undefined>, query: req.query })) {
+    vapiError(res, toolCallId, "unauthorized");
     return;
   }
 
@@ -26,16 +21,13 @@ export default async function handler(
     const result = parseDoc(raw);
 
     if (!result.ok) {
-      res.statusCode = 200;
-      res.end(JSON.stringify({ ok: false, reason: "parse_error" }));
+      vapiError(res, toolCallId, "The document could not be read. James needs to check it.");
       return;
     }
 
-    const { name, preferredName, reminders, contacts } = result.data;
-    res.statusCode = 200;
-    res.end(JSON.stringify({ ok: true, data: { name, preferredName, reminders, contacts } }));
+    const { name, preferredName, contacts } = result.data;
+    vapiOk(res, toolCallId, formatPerson(name, preferredName, contacts));
   } catch {
-    res.statusCode = 500;
-    res.end(JSON.stringify({ ok: false, reason: "unavailable" }));
+    vapiError(res, toolCallId, "Person information is unavailable right now.");
   }
 }

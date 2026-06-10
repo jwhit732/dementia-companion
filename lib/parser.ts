@@ -33,6 +33,16 @@ const MONTH_NAMES: Record<string, number> = {
 
 const BULLET_RE = /^\s*[-•*]\s*/;
 
+function findFirstCommaOutsideParens(s: string): number {
+  let depth = 0;
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === "(") depth++;
+    else if (s[i] === ")") depth--;
+    else if (s[i] === "," && depth === 0) return i;
+  }
+  return -1;
+}
+
 /**
  * Returns today's date in `Australia/Brisbane` timezone as a "YYYY-MM-DD"
  * string. Brisbane does not observe daylight saving so this is stable.
@@ -146,7 +156,8 @@ function parseScheduleItem(line: string): ScheduleItem | null {
 
   let title = rest;
   let location: string | undefined;
-  const commaIdx = rest.indexOf(",");
+  // Split on first comma that is NOT inside parentheses
+  const commaIdx = findFirstCommaOutsideParens(rest);
   if (commaIdx !== -1) {
     title = rest.slice(0, commaIdx).trim();
     const tail = rest.slice(commaIdx + 1).trim();

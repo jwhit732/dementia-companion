@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "http";
 import { checkAuth } from "../lib/auth";
-import { getDocText } from "../lib/docReader";
+import { getDocText, DocReaderError } from "../lib/docReader";
 import { parseDoc } from "../lib/parser";
 import { readBody, vapiOk, vapiError, formatReminders } from "../lib/vapiAdapter";
 
@@ -21,12 +21,19 @@ export default async function handler(
     const result = parseDoc(raw);
 
     if (!result.ok) {
-      vapiError(res, toolCallId, "The reminders document could not be read. James needs to check it.");
+      vapiError(res, toolCallId,
+        `The reminders document could not be read. James needs to check it. [${result.reason}]`);
       return;
     }
 
     vapiOk(res, toolCallId, formatReminders(result.data.reminders));
-  } catch {
-    vapiError(res, toolCallId, "Reminders are unavailable right now.");
+  } catch (err) {
+    if (err instanceof DocReaderError) {
+      console.error(`[reminders] doc fetch failed: reason=${err.reason} message=${err.message}`);
+      vapiError(res, toolCallId, `Reminders are unavailable right now. [${err.reason}]`);
+    } else {
+      console.error(`[reminders] unexpected error: ${(err as Error).message ?? String(err)}`);
+      vapiError(res, toolCallId, "Reminders are unavailable right now. [unknown]");
+    }
   }
 }

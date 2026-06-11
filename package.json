@@ -11,7 +11,9 @@
     "template": "tsx scripts/generate-template.ts",
     "fetch-test": "tsx scripts/test-fetch.ts",
     "verify": "tsx scripts/verify-access.ts",
-    "create-assistant": "tsx scripts/create-vapi-assistant.ts"
+    "create-assistant": "tsx scripts/create-vapi-assistant.ts",
+    "update-assistant": "tsx scripts/update-vapi-assistant.ts",
+    "configure-webhook": "tsx scripts/configure-webhook.ts"
   },
   "keywords": [],
   "author": "",

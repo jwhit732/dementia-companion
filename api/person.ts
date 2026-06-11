@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "http";
 import { checkAuth } from "../lib/auth";
-import { getDocText } from "../lib/docReader";
+import { getDocText, DocReaderError } from "../lib/docReader";
 import { parseDoc } from "../lib/parser";
 import { readBody, vapiOk, vapiError, formatPerson } from "../lib/vapiAdapter";
 
@@ -21,13 +21,20 @@ export default async function handler(
     const result = parseDoc(raw);
 
     if (!result.ok) {
-      vapiError(res, toolCallId, "The document could not be read. James needs to check it.");
+      vapiError(res, toolCallId,
+        `The person document could not be read. James needs to check it. [${result.reason}]`);
       return;
     }
 
     const { name, preferredName, contacts } = result.data;
     vapiOk(res, toolCallId, formatPerson(name, preferredName, contacts));
-  } catch {
-    vapiError(res, toolCallId, "Person information is unavailable right now.");
+  } catch (err) {
+    if (err instanceof DocReaderError) {
+      console.error(`[person] doc fetch failed: reason=${err.reason} message=${err.message}`);
+      vapiError(res, toolCallId, `Person information is unavailable right now. [${err.reason}]`);
+    } else {
+      console.error(`[person] unexpected error: ${(err as Error).message ?? String(err)}`);
+      vapiError(res, toolCallId, "Person information is unavailable right now. [unknown]");
+    }
   }
 }

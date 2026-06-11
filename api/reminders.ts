@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "http";
 import { checkAuth } from "../lib/auth";
 import { getDocText, DocReaderError } from "../lib/docReader";
-import { parseDoc } from "../lib/parser";
+import { deterministicNormalise } from "../lib/normaliser";
 import { readBody, vapiOk, vapiError, formatReminders } from "../lib/vapiAdapter";
 import { sendAlert } from "../lib/alerts";
 
@@ -19,10 +19,10 @@ export default async function handler(
 
   try {
     const raw = await getDocText();
-    const result = parseDoc(raw);
+    const result = deterministicNormalise(raw);
 
     if (!result.ok) {
-      void sendAlert(result.reason);
+      void sendAlert(result.reason, result.diagnostics);
       vapiError(res, toolCallId,
         `The reminders document could not be read. James needs to check it. [${result.reason}]`);
       return;

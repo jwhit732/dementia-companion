@@ -3,6 +3,7 @@ import { checkAuth } from "../lib/auth";
 import { getDocText, DocReaderError } from "../lib/docReader";
 import { parseDoc } from "../lib/parser";
 import { readBody, vapiOk, vapiError, formatSchedule } from "../lib/vapiAdapter";
+import { sendAlert } from "../lib/alerts";
 
 export default async function handler(
   req: IncomingMessage & { query?: Record<string, string | string[]> },
@@ -21,6 +22,7 @@ export default async function handler(
     const result = parseDoc(raw);
 
     if (!result.ok) {
+      void sendAlert(result.reason);
       vapiError(res, toolCallId, result.reason === "stale"
         ? "The schedule has not been updated for today. James needs to update it. [stale]"
         : "The document could not be read. James needs to check it. [parse_error]");
@@ -31,9 +33,11 @@ export default async function handler(
   } catch (err) {
     if (err instanceof DocReaderError) {
       console.error(`[today] doc fetch failed: reason=${err.reason} message=${err.message}`);
+      void sendAlert(err.reason, err.message);
       vapiError(res, toolCallId, `The schedule is unavailable right now. [${err.reason}]`);
     } else {
       console.error(`[today] unexpected error: ${(err as Error).message ?? String(err)}`);
+      void sendAlert("unknown", (err as Error).message);
       vapiError(res, toolCallId, "The schedule is unavailable right now. [unknown]");
     }
   }

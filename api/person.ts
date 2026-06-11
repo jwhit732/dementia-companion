@@ -3,6 +3,7 @@ import { checkAuth } from "../lib/auth";
 import { getDocText, DocReaderError } from "../lib/docReader";
 import { parseDoc } from "../lib/parser";
 import { readBody, vapiOk, vapiError, formatPerson } from "../lib/vapiAdapter";
+import { sendAlert } from "../lib/alerts";
 
 export default async function handler(
   req: IncomingMessage & { query?: Record<string, string | string[]> },
@@ -21,6 +22,7 @@ export default async function handler(
     const result = parseDoc(raw);
 
     if (!result.ok) {
+      void sendAlert(result.reason);
       vapiError(res, toolCallId,
         `The person document could not be read. James needs to check it. [${result.reason}]`);
       return;
@@ -31,9 +33,11 @@ export default async function handler(
   } catch (err) {
     if (err instanceof DocReaderError) {
       console.error(`[person] doc fetch failed: reason=${err.reason} message=${err.message}`);
+      void sendAlert(err.reason, err.message);
       vapiError(res, toolCallId, `Person information is unavailable right now. [${err.reason}]`);
     } else {
       console.error(`[person] unexpected error: ${(err as Error).message ?? String(err)}`);
+      void sendAlert("unknown", (err as Error).message);
       vapiError(res, toolCallId, "Person information is unavailable right now. [unknown]");
     }
   }

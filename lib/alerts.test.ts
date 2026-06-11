@@ -1,16 +1,8 @@
-/**
- * Unit tests for `sendAlert` debounce behaviour.
- *
- * We mock the `resend` package so no network calls are made. The mock's
- * `emails.send` is asserted against to verify whether an email was sent.
- */
+const mockSendMail = jest.fn().mockResolvedValue({ messageId: "mocked" });
+const mockCreateTransport = jest.fn().mockReturnValue({ sendMail: mockSendMail });
 
-const mockSend = jest.fn().mockResolvedValue({ id: "mocked" });
-
-jest.mock("resend", () => ({
-  Resend: jest.fn().mockImplementation(() => ({
-    emails: { send: mockSend },
-  })),
+jest.mock("nodemailer", () => ({
+  createTransport: (...args: unknown[]) => mockCreateTransport(...args),
 }));
 
 import { sendAlert, _resetDebounce } from "./alerts";
@@ -24,12 +16,13 @@ describe("sendAlert (debounce)", () => {
 
     process.env = {
       ...ORIGINAL_ENV,
-      RESEND_API_KEY: "test-key",
-      ALERT_FROM: "alerts@example.com",
-      ALERT_TO: "carer@example.com",
+      GMAIL_USER: "carer@gmail.com",
+      GMAIL_APP_PASSWORD: "test-app-password",
+      ALERT_TO: "carer@gmail.com",
     };
 
-    mockSend.mockClear();
+    mockSendMail.mockClear();
+    mockCreateTransport.mockClear();
     _resetDebounce();
   });
 
@@ -40,39 +33,47 @@ describe("sendAlert (debounce)", () => {
 
   test("first call sends the email", async () => {
     await sendAlert("stale");
-    expect(mockSend).toHaveBeenCalledTimes(1);
+    expect(mockSendMail).toHaveBeenCalledTimes(1);
 
-    const arg = mockSend.mock.calls[0]![0] as {
-      from: string;
-      to: string;
-      subject: string;
-      text: string;
+    const arg = mockSendMail.mock.calls[0]![0] as {
+      from: string; to: string; subject: string; text: string;
     };
-    expect(arg.from).toBe("alerts@example.com");
-    expect(arg.to).toBe("carer@example.com");
+    expect(arg.from).toBe("carer@gmail.com");
+    expect(arg.to).toBe("carer@gmail.com");
     expect(arg.subject).toBe("Companion alert: schedule not updated");
-    expect(arg.text).toContain("not been updated");
+    expect(arg.text).toContain("not been updated for today");
   });
 
   test("second call within 6h is suppressed", async () => {
     await sendAlert("stale");
-    expect(mockSend).toHaveBeenCalledTimes(1);
+    expect(mockSendMail).toHaveBeenCalledTimes(1);
 
-    // Advance 5h59m — still inside debounce window.
     jest.setSystemTime(new Date("2026-06-10T05:59:00Z"));
     await sendAlert("stale");
 
-    expect(mockSend).toHaveBeenCalledTimes(1);
+    expect(mockSendMail).toHaveBeenCalledTimes(1);
   });
 
   test("call after 6h sends again", async () => {
     await sendAlert("stale");
-    expect(mockSend).toHaveBeenCalledTimes(1);
+    expect(mockSendMail).toHaveBeenCalledTimes(1);
 
-    // Advance 6h1m — outside debounce window.
     jest.setSystemTime(new Date("2026-06-10T06:01:00Z"));
     await sendAlert("stale");
 
-    expect(mockSend).toHaveBeenCalledTimes(2);
+    expect(mockSendMail).toHaveBeenCalledTimes(2);
+  });
+
+  test("detail string is appended to email body", async () => {
+    await sendAlert("fetch_403", "Drive 403: The caller does not have permission");
+    const arg = mockSendMail.mock.calls[0]![0] as { subject: string; text: string };
+    expect(arg.subject).toBe("Companion alert: document access denied (403)");
+    expect(arg.text).toContain("Detail: Drive 403: The caller does not have permission");
+  });
+
+  test("missing env vars suppress send without throwing", async () => {
+    delete process.env.GMAIL_APP_PASSWORD;
+    await sendAlert("stale");
+    expect(mockSendMail).not.toHaveBeenCalled();
   });
 });

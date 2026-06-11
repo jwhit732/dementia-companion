@@ -13,7 +13,8 @@
     "verify": "tsx scripts/verify-access.ts",
     "create-assistant": "tsx scripts/create-vapi-assistant.ts",
     "update-assistant": "tsx scripts/update-vapi-assistant.ts",
-    "configure-webhook": "tsx scripts/configure-webhook.ts"
+    "configure-webhook": "tsx scripts/configure-webhook.ts",
+    "get-gmail-token": "tsx scripts/get-gmail-token.ts"
   },
   "keywords": [],
   "author": "",
@@ -21,12 +22,13 @@
   "description": "",
   "dependencies": {
     "googleapis": "^173.0.0",
-    "resend": "^6.12.4",
+    "nodemailer": "^8.0.11",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^25.9.2",
+    "@types/nodemailer": "^8.0.1",
     "jest": "^30.4.2",
     "ts-jest": "^29.4.11",
     "tsx": "^4.22.4",

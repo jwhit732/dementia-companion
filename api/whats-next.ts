@@ -1,7 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "http";
 import { checkAuth } from "../lib/auth";
-import { getSheetData } from "../lib/sources/sheetSource";
-import { readBody, vapiOk, vapiError, formatReminders } from "../lib/vapiAdapter";
+import { getCalendarItems } from "../lib/sources/calendarSource";
+import { computeTimeFacts } from "../lib/timeFacts";
+import { readBody, vapiOk, vapiError, formatWhatsNext } from "../lib/vapiAdapter";
 import { sendAlert } from "../lib/alerts";
 
 export default async function handler(
@@ -16,20 +17,22 @@ export default async function handler(
     return;
   }
 
+  const now = new Date();
   try {
-    const result = await getSheetData();
+    const result = await getCalendarItems(now);
 
     if (!result.ok) {
       void sendAlert(result.reason, result.diagnostics);
-      vapiError(res, toolCallId, "The reminders are unavailable right now. James needs to check it.");
+      vapiError(res, toolCallId, "The schedule is unavailable right now. James needs to check it.");
       return;
     }
 
-    vapiOk(res, toolCallId, formatReminders(result.data.reminders));
+    const facts = computeTimeFacts(now, result.items);
+    vapiOk(res, toolCallId, formatWhatsNext(facts));
   } catch (err) {
     const msg = (err as Error).message ?? String(err);
-    console.error(`[reminders] unexpected error: ${msg}`);
+    console.error(`[whats-next] unexpected error: ${msg}`);
     void sendAlert("unknown", msg);
-    vapiError(res, toolCallId, "Reminders are unavailable right now. [unknown]");
+    vapiError(res, toolCallId, "The schedule is unavailable right now. [unknown]");
   }
 }

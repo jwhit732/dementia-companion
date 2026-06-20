@@ -21,6 +21,14 @@ export const Doc = z.object({
   contacts: z.array(Contact),
 });
 
+export const PersonaKnobs = z.object({
+  preferred_name: z.string().default("Marg"),
+  persona_name: z.string().default("Companion"),
+  greeting_style: z.enum(["warm", "cheerful", "gentle"]).default("warm"),
+  redirect_contact: z.string().default("James"),
+});
+
 export type Doc = z.infer<typeof Doc>;
 export type ScheduleItem = z.infer<typeof ScheduleItem>;
 export type Contact = z.infer<typeof Contact>;
+export type PersonaKnobs = z.infer<typeof PersonaKnobs>;

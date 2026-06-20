@@ -1,8 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "http";
 import { checkAuth } from "../lib/auth";
-import { getDocText, DocReaderError } from "../lib/docReader";
-import { deterministicNormalise } from "../lib/normaliser";
-import { readBody, vapiOk, vapiError, formatSchedule } from "../lib/vapiAdapter";
+import { getCalendarItems } from "../lib/sources/calendarSource";
+import { computeTimeFacts } from "../lib/timeFacts";
+import { readBody, vapiOk, vapiError, formatSchedulePhase3 } from "../lib/vapiAdapter";
 import { sendAlert } from "../lib/alerts";
 
 export default async function handler(
@@ -17,28 +17,22 @@ export default async function handler(
     return;
   }
 
+  const now = new Date();
   try {
-    const raw = await getDocText();
-    const result = deterministicNormalise(raw);
+    const result = await getCalendarItems(now);
 
     if (!result.ok) {
       void sendAlert(result.reason, result.diagnostics);
-      vapiError(res, toolCallId, result.reason === "stale"
-        ? "The schedule has not been updated for today. James needs to update it. [stale]"
-        : "The document could not be read. James needs to check it. [parse_error]");
+      vapiError(res, toolCallId, "The schedule is unavailable right now. James needs to check it.");
       return;
     }
 
-    vapiOk(res, toolCallId, formatSchedule(result.data.schedule));
+    const facts = computeTimeFacts(now, result.items);
+    vapiOk(res, toolCallId, formatSchedulePhase3(result.items, facts));
   } catch (err) {
-    if (err instanceof DocReaderError) {
-      console.error(`[today] doc fetch failed: reason=${err.reason} message=${err.message}`);
-      void sendAlert(err.reason, err.message);
-      vapiError(res, toolCallId, `The schedule is unavailable right now. [${err.reason}]`);
-    } else {
-      console.error(`[today] unexpected error: ${(err as Error).message ?? String(err)}`);
-      void sendAlert("unknown", (err as Error).message);
-      vapiError(res, toolCallId, "The schedule is unavailable right now. [unknown]");
-    }
+    const msg = (err as Error).message ?? String(err);
+    console.error(`[today] unexpected error: ${msg}`);
+    void sendAlert("unknown", msg);
+    vapiError(res, toolCallId, "The schedule is unavailable right now. [unknown]");
   }
 }

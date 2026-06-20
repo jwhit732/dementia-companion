@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "http";
 import type { ScheduleItem, Contact } from "./schema";
+import type { TimeFacts } from "./timeFacts";
 
 export interface VapiToolCallBody {
   message?: {
@@ -57,4 +58,62 @@ export function formatPerson(
     lines.push(`${c.name} is her ${c.relationship}${phone}.`);
   }
   return lines.join(" ");
+}
+
+// Phase 3: time-aware schedule — pre-computed phrases so the LLM never does time arithmetic
+export function formatSchedulePhase3(items: ScheduleItem[], facts: TimeFacts): string {
+  if (facts.nothingScheduled) return "Nothing scheduled for Marg today.";
+
+  const seg = facts.daySegment;
+
+  if (facts.allPassed) {
+    const list = facts.pastItems
+      .map((it) => {
+        const loc = it.location ? ` at ${it.location}` : "";
+        return `${it.title}${loc} at ${it.time}`;
+      })
+      .join(", ");
+    return `All done for today. Marg had: ${list}.`;
+  }
+
+  const nextPhrase = (() => {
+    if (!facts.nextItem) return "";
+    const loc = facts.nextItem.location ? ` at ${facts.nextItem.location}` : "";
+    const rel = facts.nextRelativePhrase ? ` — ${facts.nextRelativePhrase}` : "";
+    return ` Next is ${facts.nextItem.title}${loc}, ${facts.nextAbsolutePhrase}${rel}.`;
+  })();
+
+  const isPastSet = new Set(facts.pastItems);
+  const allLine = items
+    .map((it) => {
+      const loc = it.location ? ` at ${it.location}` : "";
+      const done = isPastSet.has(it) ? " (done)" : "";
+      return `${it.time} ${it.title}${loc}${done}`;
+    })
+    .join(". ");
+
+  const n = items.length;
+  return `It's ${seg}. Marg has ${n} ${n === 1 ? "thing" : "things"} today.${nextPhrase} Full schedule: ${allLine}.`;
+}
+
+export function formatWhatsNext(facts: TimeFacts): string {
+  if (facts.nothingScheduled) return "Marg has nothing scheduled today.";
+
+  if (facts.allPassed) {
+    const list = facts.pastItems.map((it) => `${it.title} at ${it.time}`).join(" and ");
+    return `Nothing more for today. Marg has had: ${list}.`;
+  }
+
+  if (!facts.nextItem) return "No more appointments coming up for today.";
+
+  const loc = facts.nextItem.location ? ` at ${facts.nextItem.location}` : "";
+  const rel = facts.nextRelativePhrase ? ` — ${facts.nextRelativePhrase}` : "";
+  const timeStr = `${facts.nextAbsolutePhrase}${rel}`;
+  const remaining = facts.remainingItems.length - 1;
+  const tail =
+    remaining > 0
+      ? ` After that, ${remaining} more ${remaining === 1 ? "thing" : "things"} today.`
+      : " That's the last thing today.";
+
+  return `Marg's next thing is ${facts.nextItem.title}${loc}, ${timeStr}.${tail}`;
 }

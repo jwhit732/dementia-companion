@@ -112,6 +112,106 @@ export function clearCalendarCache(): void {
   cache = null;
 }
 
+export type DayGroup = {
+  label: string;       // "today" | "tomorrow" | "Saturday" | "Monday" etc.
+  dateKey: string;     // "2026-06-21"
+  items: ScheduleItem[];
+};
+
+export type WeekReadResult =
+  | { ok: true; days: DayGroup[] }
+  | { ok: false; reason: "auth_failure" | "fetch_error"; diagnostics?: string };
+
+function dayLabelBrisbane(dateKey: string, todayKey: string, tomorrowKey: string): string {
+  if (dateKey === todayKey) return "today";
+  if (dateKey === tomorrowKey) return "tomorrow";
+  // Parse YYYY-MM-DD and get the day name in Brisbane
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const dt = new Date(Date.UTC(y!, m! - 1, d!));
+  return new Intl.DateTimeFormat("en-AU", {
+    timeZone: "Australia/Brisbane",
+    weekday: "long",
+  }).format(dt);
+}
+
+function eventDateKey(event: { start?: { dateTime?: string | null; date?: string | null } | null }): string | null {
+  const dt = event.start?.dateTime;
+  const d = event.start?.date;
+  if (dt) {
+    // Extract Brisbane date from ISO datetime
+    const parsed = new Date(dt);
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Australia/Brisbane",
+      year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(parsed);
+  }
+  return d ?? null;
+}
+
+export async function getWeekItems(now: Date = new Date()): Promise<WeekReadResult> {
+  const calendarId = process.env.CALENDAR_ID;
+  if (!calendarId) return { ok: false, reason: "fetch_error", diagnostics: "missing CALENDAR_ID" };
+
+  const saKeyRaw = process.env.GOOGLE_SA_KEY;
+  if (!saKeyRaw) return { ok: false, reason: "auth_failure", diagnostics: "missing GOOGLE_SA_KEY" };
+
+  try {
+    const credentials = JSON.parse(Buffer.from(saKeyRaw, "base64").toString("utf8")) as Record<string, unknown>;
+    const auth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: ["https://www.googleapis.com/auth/calendar.readonly"],
+    });
+    const calendar = google.calendar({ version: "v3", auth });
+
+    const todayKey = dateKeyBrisbane(now, 0);
+    const endKey = dateKeyBrisbane(now, 6);
+
+    const res = await calendar.events.list({
+      calendarId,
+      timeMin: `${todayKey}T00:00:00+10:00`,
+      timeMax: `${endKey}T23:59:59+10:00`,
+      singleEvents: true,
+      orderBy: "startTime",
+      timeZone: "Australia/Brisbane",
+    });
+
+    const tomorrowKey = dateKeyBrisbane(now, 1);
+    const grouped = new Map<string, ScheduleItem[]>();
+
+    for (const event of res.data.items ?? []) {
+      if (!event.summary?.trim()) continue;
+      const time = parseEventTime(event.start?.dateTime, event.start?.date);
+      if (!time) continue;
+      const dk = eventDateKey(event);
+      if (!dk) continue;
+      if (!grouped.has(dk)) grouped.set(dk, []);
+      grouped.get(dk)!.push({
+        time,
+        title: event.summary.trim(),
+        ...(event.location?.trim() ? { location: event.location.trim() } : {}),
+      });
+    }
+
+    // Build days array in order (today → today+6), only days with events
+    const days: DayGroup[] = [];
+    for (let i = 0; i <= 6; i++) {
+      const dk = dateKeyBrisbane(now, i);
+      const items = grouped.get(dk);
+      if (items && items.length > 0) {
+        days.push({
+          label: dayLabelBrisbane(dk, todayKey, tomorrowKey),
+          dateKey: dk,
+          items,
+        });
+      }
+    }
+
+    return { ok: true, days };
+  } catch (err) {
+    return { ok: false, reason: "fetch_error", diagnostics: (err as Error).message };
+  }
+}
+
 // Fetch a specific day's events by offset (1 = tomorrow, etc.)
 // Uses a separate one-shot fetch — not cached (tomorrow changes less often than today)
 async function fetchDayItems(now: Date, offsetDays: number): Promise<ScheduleItem[]> {

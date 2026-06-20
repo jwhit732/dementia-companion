@@ -23,7 +23,7 @@ const tools = [
     type: "function",
     function: {
       name: "get_today_schedule",
-      description: "Get today's full schedule — all appointments with pre-computed time context (what segment of day it is, what's next). Use for 'what's my day?' or 'what have I got on today?'",
+      description: "Get today's full schedule with pre-computed time context. When today is empty, also returns tomorrow's events. Use for any question about today's plans, today's appointments, or what's on tomorrow.",
       parameters: { type: "object", properties: {}, required: [] },
     },
     server: {
@@ -35,7 +35,7 @@ const tools = [
     type: "function",
     function: {
       name: "get_whats_next",
-      description: "Get what's coming up next right now — a focused, time-relative phrase like 'physio in about 20 minutes'. Use for 'is there anything soon?' or 'what's next?' or 'anything left today?'",
+      description: "Get what's coming up next — a focused, time-relative phrase. Looks ahead to tomorrow if nothing is left today. Use for 'what's next?', 'anything soon?', 'anything left today?', 'anything coming up?', or 'anything tomorrow?'",
       parameters: { type: "object", properties: {}, required: [] },
     },
     server: {
@@ -67,11 +67,33 @@ const tools = [
       headers: { "x-companion-secret": secret },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_current_time",
+      description: "Get the current time and date in Brisbane. Use when asked what time it is, what day it is, or what the date is.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+    server: {
+      url: `${VERCEL_URL}/api/current-time?secret=${secret}`,
+      headers: { "x-companion-secret": secret },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_week_schedule",
+      description: "Get appointments for the next 7 days. Only lists days that have something on. Use for 'what do I have this week?', 'what's coming up this week?', 'anything on in the next few days?'",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+    server: {
+      url: `${VERCEL_URL}/api/week-schedule?secret=${secret}`,
+      headers: { "x-companion-secret": secret },
+    },
+  },
 ];
 
 const patch = {
-  // firstMessage and endCallMessage are overridden per-call by /api/assistant-config
-  // These are the fallback values if the override endpoint isn't reached
   firstMessage: "Hello Robyn, lovely to hear your voice. How can I help you today?",
   endCallMessage: "Take good care, Robyn. Imogen is always just a call away.",
   model: {
@@ -83,7 +105,7 @@ const patch = {
   },
 };
 
-console.log(`[vapi] Updating assistant ${ASSISTANT_ID} — Phase 3 (4 tools + new system prompt)…`);
+console.log(`[vapi] Updating assistant ${ASSISTANT_ID} — 5 tools + updated system prompt…`);
 
 fetch(`https://api.vapi.ai/assistant/${ASSISTANT_ID}`, {
   method: "PATCH",

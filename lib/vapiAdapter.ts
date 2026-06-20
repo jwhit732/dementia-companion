@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "http";
 import type { ScheduleItem, Contact } from "./schema";
 import type { TimeFacts } from "./timeFacts";
+import type { DayGroup } from "./sources/calendarSource";
 
 export interface VapiToolCallBody {
   message?: {
@@ -107,6 +108,24 @@ export function formatSchedulePhase3(
 
   const n = items.length;
   return `${timeStamp} Marg has ${n} ${n === 1 ? "thing" : "things"} today.${nextPhrase} Full schedule: ${allLine}.`;
+}
+
+export function formatWeekSchedule(days: DayGroup[]): string {
+  if (days.length === 0) return "Nothing in the diary for the next week.";
+
+  const lines = days.map((day) => {
+    const evts = day.items
+      .map((it) => {
+        const loc = it.location ? ` at ${it.location}` : "";
+        return `${it.title} at ${it.time}${loc}`;
+      })
+      .join(", ");
+    return `${day.label.charAt(0).toUpperCase() + day.label.slice(1)}: ${evts}`;
+  });
+
+  const rest = 7 - days.length;
+  const tail = rest > 0 ? " Nothing on the other days." : "";
+  return `This week — ${lines.join(". ")}.${tail}`;
 }
 
 export function formatWhatsNext(facts: TimeFacts, tomorrowItems: ScheduleItem[] = []): string {

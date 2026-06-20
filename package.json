@@ -17,7 +17,8 @@
     "get-gmail-token": "tsx scripts/get-gmail-token.ts",
     "setup-sheet": "tsx scripts/setup-sheet.ts",
     "verify-sheet": "tsx scripts/verify-sheet-access.ts",
-    "verify-calendar": "tsx scripts/verify-calendar-access.ts"
+    "verify-calendar": "tsx scripts/verify-calendar-access.ts",
+    "configure-phone": "tsx scripts/configure-phone-number.ts"
   },
   "keywords": [],
   "author": "",

@@ -67,16 +67,10 @@ async function verify() {
   voiceRows.forEach(([k, v]) => console.log(`    ${k} = ${v}`));
 }
 
-verify().catch((err: Error & { code?: number }) => {
-  if (err.code === 403 || err.code === 404) {
-    console.error(
-      "[verify-sheet] FAILED — 403/404 from Sheets API.\n" +
-        "  Most likely cause: sheet not shared with the service account.\n" +
-        `  Share the sheet with: ${(credentials.client_email as string) ?? "the SA email"} (Viewer)\n` +
-        "  Or run scripts/setup-sheet.ts to create a fresh sheet."
-    );
-  } else {
-    console.error("[verify-sheet] FAILED —", err.message);
-  }
+verify().catch((err: unknown) => {
+  const e = err as { code?: number | string; status?: number; message?: string; response?: { status?: number; data?: unknown } };
+  const status = e.status ?? e.response?.status ?? e.code;
+  console.error(`[verify-sheet] FAILED — status=${status} message=${e.message ?? String(err)}`);
+  if (e.response?.data) console.error("  response:", JSON.stringify(e.response.data));
   process.exit(1);
 });

@@ -5,6 +5,7 @@ export type DaySegment = "morning" | "afternoon" | "evening";
 export interface TimeFacts {
   daySegment: DaySegment;
   nowMinutes: number;
+  nowTimePhrase: string;         // "2:30 PM" — pre-computed so LLM never guesses the time
   nextItem: ScheduleItem | null;
   nextRelativePhrase: string;    // "in about 20 minutes" | "right now" | "" (empty → use absolute)
   nextAbsolutePhrase: string;    // "at 2 this afternoon"
@@ -39,6 +40,19 @@ export function nowMinutesBrisbane(now: Date): number {
   const h = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0");
   const min = parseInt(parts.find((p) => p.type === "minute")?.value ?? "0");
   return h * 60 + min;
+}
+
+function nowTimePhraseFromDate(now: Date): string {
+  const parts = new Intl.DateTimeFormat("en-AU", {
+    timeZone: "Australia/Brisbane",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).formatToParts(now);
+  const h = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0");
+  const min = parts.find((p) => p.type === "minute")?.value ?? "00";
+  const period = parts.find((p) => p.type === "dayPeriod")?.value?.toUpperCase() ?? "";
+  return `${h}:${min} ${period}`;
 }
 
 function segmentOf(minutes: number): DaySegment {
@@ -108,6 +122,7 @@ export function computeTimeFacts(now: Date, items: ScheduleItem[]): TimeFacts {
   return {
     daySegment,
     nowMinutes: nowMins,
+    nowTimePhrase: nowTimePhraseFromDate(now),
     nextItem,
     nextRelativePhrase,
     nextAbsolutePhrase,

@@ -61,19 +61,32 @@ export function formatPerson(
 }
 
 // Phase 3: time-aware schedule — pre-computed phrases so the LLM never does time arithmetic
-export function formatSchedulePhase3(items: ScheduleItem[], facts: TimeFacts): string {
-  if (facts.nothingScheduled) return "Nothing scheduled for Marg today.";
+export function formatSchedulePhase3(
+  items: ScheduleItem[],
+  facts: TimeFacts,
+  tomorrowItems: ScheduleItem[] = []
+): string {
+  const timeStamp = `It's ${facts.nowTimePhrase} (${facts.daySegment}).`;
 
-  const seg = facts.daySegment;
+  if (facts.nothingScheduled) {
+    if (tomorrowItems.length > 0) {
+      const tmr = tomorrowItems
+        .map((it) => `${it.title} at ${it.time}${it.location ? ` at ${it.location}` : ""}`)
+        .join(", ");
+      return `${timeStamp} Nothing scheduled for today. Tomorrow: ${tmr}.`;
+    }
+    return `${timeStamp} Nothing scheduled for today.`;
+  }
 
   if (facts.allPassed) {
     const list = facts.pastItems
-      .map((it) => {
-        const loc = it.location ? ` at ${it.location}` : "";
-        return `${it.title}${loc} at ${it.time}`;
-      })
+      .map((it) => `${it.title}${it.location ? ` at ${it.location}` : ""} at ${it.time}`)
       .join(", ");
-    return `All done for today. Marg had: ${list}.`;
+    const tmrNote =
+      tomorrowItems.length > 0
+        ? ` Tomorrow: ${tomorrowItems.map((it) => `${it.title} at ${it.time}`).join(", ")}.`
+        : "";
+    return `${timeStamp} All done for today. Marg had: ${list}.${tmrNote}`;
   }
 
   const nextPhrase = (() => {
@@ -93,18 +106,27 @@ export function formatSchedulePhase3(items: ScheduleItem[], facts: TimeFacts): s
     .join(". ");
 
   const n = items.length;
-  return `It's ${seg}. Marg has ${n} ${n === 1 ? "thing" : "things"} today.${nextPhrase} Full schedule: ${allLine}.`;
+  return `${timeStamp} Marg has ${n} ${n === 1 ? "thing" : "things"} today.${nextPhrase} Full schedule: ${allLine}.`;
 }
 
-export function formatWhatsNext(facts: TimeFacts): string {
-  if (facts.nothingScheduled) return "Marg has nothing scheduled today.";
+export function formatWhatsNext(facts: TimeFacts, tomorrowItems: ScheduleItem[] = []): string {
+  const timeStamp = `It's ${facts.nowTimePhrase}.`;
 
-  if (facts.allPassed) {
-    const list = facts.pastItems.map((it) => `${it.title} at ${it.time}`).join(" and ");
-    return `Nothing more for today. Marg has had: ${list}.`;
+  if (facts.nothingScheduled || facts.allPassed) {
+    const doneNote =
+      facts.allPassed && facts.pastItems.length > 0
+        ? ` Marg has had: ${facts.pastItems.map((it) => `${it.title} at ${it.time}`).join(" and ")}.`
+        : "";
+    if (tomorrowItems.length > 0) {
+      const tmr = tomorrowItems
+        .map((it) => `${it.title} at ${it.time}${it.location ? ` at ${it.location}` : ""}`)
+        .join(", ");
+      return `${timeStamp}${doneNote} Nothing more today. Tomorrow: ${tmr}.`;
+    }
+    return `${timeStamp}${doneNote} Nothing more for today.`;
   }
 
-  if (!facts.nextItem) return "No more appointments coming up for today.";
+  if (!facts.nextItem) return `${timeStamp} No more appointments coming up for today.`;
 
   const loc = facts.nextItem.location ? ` at ${facts.nextItem.location}` : "";
   const rel = facts.nextRelativePhrase ? ` — ${facts.nextRelativePhrase}` : "";
@@ -115,5 +137,5 @@ export function formatWhatsNext(facts: TimeFacts): string {
       ? ` After that, ${remaining} more ${remaining === 1 ? "thing" : "things"} today.`
       : " That's the last thing today.";
 
-  return `Marg's next thing is ${facts.nextItem.title}${loc}, ${timeStr}.${tail}`;
+  return `${timeStamp} Marg's next thing is ${facts.nextItem.title}${loc}, ${timeStr}.${tail}`;
 }

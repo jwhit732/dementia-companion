@@ -8,17 +8,20 @@ export type CalendarReadResult =
 let cache: { items: ScheduleItem[]; fetchedAt: number; dateKey: string } | null = null;
 const CACHE_TTL_MS = 60_000;
 
-function todayKeyBrisbane(now: Date): string {
+function dateKeyBrisbane(now: Date, offsetDays = 0): string {
+  const shifted = new Date(now.getTime() + offsetDays * 24 * 60 * 60 * 1000);
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Australia/Brisbane",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(now);
+  }).format(shifted);
 }
 
+// Kept for backward compat
+function todayKeyBrisbane(now: Date): string { return dateKeyBrisbane(now, 0); }
+
 function brisbaneRangeForDay(dateKey: string): { timeMin: string; timeMax: string } {
-  // Brisbane is UTC+10, no daylight saving
   return {
     timeMin: `${dateKey}T00:00:00+10:00`,
     timeMax: `${dateKey}T23:59:59+10:00`,
@@ -107,4 +110,51 @@ export async function getCalendarItems(now: Date = new Date()): Promise<Calendar
 
 export function clearCalendarCache(): void {
   cache = null;
+}
+
+// Fetch a specific day's events by offset (1 = tomorrow, etc.)
+// Uses a separate one-shot fetch — not cached (tomorrow changes less often than today)
+async function fetchDayItems(now: Date, offsetDays: number): Promise<ScheduleItem[]> {
+  const calendarId = process.env.CALENDAR_ID;
+  const saKeyRaw = process.env.GOOGLE_SA_KEY;
+  if (!calendarId || !saKeyRaw) return [];
+
+  const credentials = JSON.parse(Buffer.from(saKeyRaw, "base64").toString("utf8")) as Record<string, unknown>;
+  const auth = new google.auth.GoogleAuth({
+    credentials,
+    scopes: ["https://www.googleapis.com/auth/calendar.readonly"],
+  });
+  const calendar = google.calendar({ version: "v3", auth });
+  const dateKey = dateKeyBrisbane(now, offsetDays);
+  const { timeMin, timeMax } = brisbaneRangeForDay(dateKey);
+
+  const res = await calendar.events.list({
+    calendarId,
+    timeMin,
+    timeMax,
+    singleEvents: true,
+    orderBy: "startTime",
+    timeZone: "Australia/Brisbane",
+  });
+
+  const items: ScheduleItem[] = [];
+  for (const event of res.data.items ?? []) {
+    if (!event.summary?.trim()) continue;
+    const time = parseEventTime(event.start?.dateTime, event.start?.date);
+    if (!time) continue;
+    items.push({
+      time,
+      title: event.summary.trim(),
+      ...(event.location?.trim() ? { location: event.location.trim() } : {}),
+    });
+  }
+  return items;
+}
+
+export async function getTomorrowItems(now: Date): Promise<ScheduleItem[]> {
+  try {
+    return await fetchDayItems(now, 1);
+  } catch {
+    return [];
+  }
 }

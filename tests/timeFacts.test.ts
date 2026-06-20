@@ -33,6 +33,9 @@ describe("computeTimeFacts — mid-morning, items ahead", () => {
   const facts = computeTimeFacts(T_0830, ITEMS);
 
   test("daySegment is morning", () => expect(facts.daySegment).toBe("morning"));
+  test("nowTimePhrase is populated and includes AM", () => {
+    expect(facts.nowTimePhrase).toMatch(/AM/i);
+  });
   test("not allPassed", () => expect(facts.allPassed).toBe(false));
   test("not nothingScheduled", () => expect(facts.nothingScheduled).toBe(false));
   test("all items in remaining (nothing past yet)", () => expect(facts.remainingItems).toHaveLength(3));

@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "http";
 import { checkAuth } from "../lib/auth";
-import { getCalendarItems } from "../lib/sources/calendarSource";
+import { getCalendarItems, getTomorrowItems } from "../lib/sources/calendarSource";
 import { computeTimeFacts } from "../lib/timeFacts";
 import { readBody, vapiOk, vapiError, formatSchedulePhase3 } from "../lib/vapiAdapter";
 import { sendAlert } from "../lib/alerts";
@@ -28,7 +28,12 @@ export default async function handler(
     }
 
     const facts = computeTimeFacts(now, result.items);
-    vapiOk(res, toolCallId, formatSchedulePhase3(result.items, facts));
+
+    // Peek at tomorrow if today has nothing (or everything is done)
+    const tomorrowItems =
+      facts.nothingScheduled || facts.allPassed ? await getTomorrowItems(now) : [];
+
+    vapiOk(res, toolCallId, formatSchedulePhase3(result.items, facts, tomorrowItems));
   } catch (err) {
     const msg = (err as Error).message ?? String(err);
     console.error(`[today] unexpected error: ${msg}`);

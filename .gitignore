@@ -5,3 +5,5 @@ dist/
 
 .vercel
 .env.production
+companion-sa-key.json
+vercel-env.txt

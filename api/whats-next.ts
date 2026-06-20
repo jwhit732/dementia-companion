@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "http";
 import { checkAuth } from "../lib/auth";
-import { getCalendarItems } from "../lib/sources/calendarSource";
+import { getCalendarItems, getTomorrowItems } from "../lib/sources/calendarSource";
 import { computeTimeFacts } from "../lib/timeFacts";
 import { readBody, vapiOk, vapiError, formatWhatsNext } from "../lib/vapiAdapter";
 import { sendAlert } from "../lib/alerts";
@@ -28,7 +28,14 @@ export default async function handler(
     }
 
     const facts = computeTimeFacts(now, result.items);
-    vapiOk(res, toolCallId, formatWhatsNext(facts));
+
+    // Always peek tomorrow for whats-next — if nothing left today, what's coming up?
+    const tomorrowItems =
+      facts.nothingScheduled || facts.allPassed || !facts.nextItem
+        ? await getTomorrowItems(now)
+        : [];
+
+    vapiOk(res, toolCallId, formatWhatsNext(facts, tomorrowItems));
   } catch (err) {
     const msg = (err as Error).message ?? String(err);
     console.error(`[whats-next] unexpected error: ${msg}`);
